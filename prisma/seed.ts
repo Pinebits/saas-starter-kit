@@ -1,160 +1,82 @@
-const { faker } = require('@faker-js/faker');
-const { PrismaClient } = require('@prisma/client');
-const client = new PrismaClient();
-const { hash } = require('bcryptjs');
-const { randomUUID } = require('crypto');
+import { PrismaClient, Role } from '@prisma/client';
+import { hash } from 'bcryptjs';
 
-let USER_COUNT = 10;
-const TEAM_COUNT = 5;
-const ADMIN_EMAIL = 'admin@example.com';
-const ADMIN_PASSWORD = 'admin@123';
-const USER_EMAIL = 'user@example.com';
-const USER_PASSWORD = 'user@123';
-async function seedUsers() {
-  const newUsers: any[] = [];
-  await createRandomUser(ADMIN_EMAIL, ADMIN_PASSWORD);
-  await createRandomUser(USER_EMAIL, USER_PASSWORD);
-  await Promise.all(
-    Array(USER_COUNT)
-      .fill(0)
-      .map(() => createRandomUser())
-  );
+const prisma = new PrismaClient();
 
-  console.log('Seeded users', newUsers.length);
-
-  return newUsers;
-
-  async function createRandomUser(
-    email: string | undefined = undefined,
-    password: string | undefined = undefined
-  ) {
-    try {
-      const originalPassword = password || faker.internet.password();
-      email = email || faker.internet.email();
-      password = await hash(originalPassword, 12);
-      const user = await client.user.create({
-        data: {
-          email,
-          name: faker.person.firstName(),
-          password,
-          emailVerified: new Date(),
-        },
-      });
-      newUsers.push({
-        ...user,
-        password: originalPassword,
-      });
-      USER_COUNT--;
-    } catch (ex: any) {
-      if (ex.message.indexOf('Unique constraint failed') > -1) {
-        console.error('Duplicate email', email);
-      } else {
-        console.log(ex);
-      }
+async function main() {
+  // Create a master admin user
+  const adminUser = await prisma.user.create({
+    data: {
+      name: "Admin User",
+      email: "admin@example.com",
+      password: await hash("admin@123", 12),
+      emailVerified: new Date(),
+      isMasterAdmin: true
     }
-  }
-}
-
-async function seedTeams() {
-  const newTeams: any[] = [];
-
-  await Promise.all(
-    Array(TEAM_COUNT)
-      .fill(0)
-      .map(() => createRandomTeam())
-  );
-  console.log('Seeded teams', newTeams.length);
-  return newTeams;
-
-  async function createRandomTeam() {
-    const name = faker.company.name();
-    const team = await client.team.create({
-      data: {
-        name,
-        slug: name
-          .toString()
-          .toLowerCase()
-          .replace(/\s+/g, '-')
-          .replace(/[^\w-]+/g, '')
-          .replace(/--+/g, '-')
-          .replace(/^-+/, '')
-          .replace(/-+$/, ''),
-      },
-    });
-    newTeams.push(team);
-  }
-}
-
-async function seedTeamMembers(users: any[], teams: any[]) {
-  const newTeamMembers: any[] = [];
-  const roles = ['OWNER', 'MEMBER'];
-  for (const user of users) {
-    const count = Math.floor(Math.random() * (TEAM_COUNT - 1)) + 2;
-    const teamUsed = new Set();
-    for (let j = 0; j < count; j++) {
-      try {
-        let teamId;
-        do {
-          teamId = teams[Math.floor(Math.random() * TEAM_COUNT)].id;
-        } while (teamUsed.has(teamId));
-        teamUsed.add(teamId);
-        newTeamMembers.push({
-          role:
-            user.email === ADMIN_EMAIL
-              ? 'OWNER'
-              : user.email === USER_EMAIL
-                ? 'MEMBER'
-                : roles[Math.floor(Math.random() * 2)],
-          teamId,
-          userId: user.id,
-        });
-      } catch (ex) {
-        console.log(ex);
-      }
-    }
-  }
-
-  await client.teamMember.createMany({
-    data: newTeamMembers,
   });
-  console.log('Seeded team members', newTeamMembers.length);
-}
+  console.log('Created master admin user:', adminUser.email);
 
-async function seedInvitations(teams: any[], users: any[]) {
-  const newInvitations: any[] = [];
-  for (const team of teams) {
-    const count = Math.floor(Math.random() * users.length) + 2;
-    for (let j = 0; j < count; j++) {
-      try {
-        const invitation = await client.invitation.create({
-          data: {
-            teamId: team.id,
-            invitedBy: users[Math.floor(Math.random() * users.length)].id,
-            email: faker.internet.email(),
-            role: 'MEMBER',
-            sentViaEmail: true,
-            token: randomUUID(),
-            allowedDomains: [],
-            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          },
-        });
-        newInvitations.push(invitation);
-      } catch (ex) {
-        console.log(ex);
+  // Create a regular user
+  const regularUser = await prisma.user.create({
+    data: {
+      name: "Regular User",
+      email: "user@example.com",
+      password: await hash("user@123", 12),
+      emailVerified: new Date()
+    }
+  });
+  console.log('Created regular user:', regularUser.email);
+
+  // Create a tenant
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: "Demo Organization",
+      slug: "demo-organization"
+    }
+  });
+  console.log('Created tenant:', tenant.name);
+
+  // Add users to the tenant
+  await prisma.tenantMember.create({
+    data: {
+      tenantId: tenant.id,
+      userId: adminUser.id,
+      role: Role.OWNER
+    }
+  });
+
+  await prisma.tenantMember.create({
+    data: {
+      tenantId: tenant.id,
+      userId: regularUser.id,
+      role: Role.MEMBER
+    }
+  });
+  console.log('Added users to tenant');
+
+  // Create an audit log entry
+  await prisma.adminAuditLog.create({
+    data: {
+      userId: adminUser.id,
+      action: 'CREATE_TENANT',
+      targetType: 'TENANT',
+      targetId: tenant.id,
+      details: {
+        name: tenant.name,
+        timestamp: new Date().toISOString()
       }
     }
-  }
+  });
+  console.log('Created audit log entry');
 
-  console.log('Seeded invitations', newInvitations.length);
-
-  return newInvitations;
+  console.log('Database seeded successfully');
 }
 
-async function init() {
-  const users = await seedUsers();
-  const teams = await seedTeams();
-  await seedTeamMembers(users, teams);
-  await seedInvitations(teams, users);
-}
-
-init();
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

@@ -360,6 +360,24 @@ export const getAuthOptions = (
         // When using database sessions, the User (user) object is provided.
         if (session && (token || user)) {
           session.user.id = token?.sub || user?.id;
+          
+          // Add isMasterAdmin flag to session
+          if (user) {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: { isMasterAdmin: true }
+            });
+            
+            session.user.isMasterAdmin = dbUser?.isMasterAdmin || false;
+          } else if (token) {
+            // For JWT session strategy
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.sub },
+              select: { isMasterAdmin: true }
+            });
+            
+            session.user.isMasterAdmin = dbUser?.isMasterAdmin || false;
+          }
         }
 
         if (user?.name) {

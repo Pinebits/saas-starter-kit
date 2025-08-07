@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import TeamNavigation from './TeamNavigation';
+import TenantNavigation from './TenantNavigation';
 import UserNavigation from './UserNavigation';
 
 const Navigation = () => {
@@ -18,7 +18,7 @@ const Navigation = () => {
 
   const Navigation = () => {
     if (slug) {
-      return <TeamNavigation activePathname={activePathname} slug={slug} />;
+      return <TenantNavigation activePathname={activePathname} slug={slug} />;
     } else {
       return <UserNavigation activePathname={activePathname} />;
     }

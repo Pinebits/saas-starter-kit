@@ -4,21 +4,25 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import type { ApiResponse } from 'types';
+import { useSession } from 'next-auth/react';
 
 const usePermissions = () => {
   const router = useRouter();
-  const [teamSlug, setTeamSlug] = useState<string | null>(null);
+  const [tenantSlug, setTenantSlug] = useState<string | null>(null);
+  const { data: session } = useSession();
+  const isMasterAdmin = session?.user?.isMasterAdmin === true;
 
   const { slug } = router.query as { slug: string };
 
   useEffect(() => {
     if (slug) {
-      setTeamSlug(slug);
+      setTenantSlug(slug);
     }
   }, [router.query, slug]);
 
+  // If user is a master admin, permissions are handled differently (in useCanAccess)
   const { data, error, isLoading } = useSWR<ApiResponse<Permission[]>>(
-    teamSlug ? `/api/teams/${teamSlug}/permissions` : null,
+    tenantSlug && !isMasterAdmin ? `/api/tenants/${tenantSlug}/permissions` : null,
     fetcher
   );
 

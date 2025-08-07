@@ -39,13 +39,27 @@ export const teamSlugSchema = z.object({
   slug,
 });
 
+export const tenantSlugSchema = z.object({
+  slug,
+});
+
 export const updateTeamSchema = z.object({
   name: teamName,
   slug: slug.transform((slug) => slugify(slug)),
   domain,
 });
 
+export const updateTenantSchema = z.object({
+  name: teamName,
+  slug: slug.transform((slug) => slugify(slug)),
+  domain,
+});
+
 export const createTeamSchema = z.object({
+  name: teamName,
+});
+
+export const createTenantSchema = z.object({
   name: teamName,
 });
 
