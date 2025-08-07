@@ -51,6 +51,12 @@ const nextConfig = {
       },
     ];
   },
+  sentry: {
+    // Use new instrumentation files instead of legacy config files
+    // For all available options, see:
+    // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
+    hideSourceMaps: true,
+  },
 };
 
 // Additional config options for the Sentry webpack plugin.
