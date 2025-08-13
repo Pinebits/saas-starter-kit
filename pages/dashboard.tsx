@@ -1,5 +1,5 @@
 import { Loading } from '@/components/shared';
-import useTeams from 'hooks/useTeams';
+import useTenants from 'hooks/useTenants';
 import { GetServerSidePropsContext } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useRouter } from 'next/router';
@@ -10,10 +10,10 @@ import { useSession } from 'next-auth/react';
 const Dashboard: NextPageWithLayout = () => {
   const router = useRouter();
   const { data: session } = useSession();
-  const { teams, isLoading } = useTeams();
+  const { tenants, isLoading } = useTenants();
 
   useEffect(() => {
-    if (isLoading || !teams) {
+    if (isLoading || !tenants) {
       return;
     }
 
@@ -24,12 +24,12 @@ const Dashboard: NextPageWithLayout = () => {
     }
 
     // For regular users, redirect to their first tenant
-    if (teams.length > 0) {
-      router.push(`/tenants/${teams[0].slug}`);
+    if (tenants.length > 0) {
+      router.push(`/tenants/${tenants[0].slug}`);
     } else {
       router.push('tenants?newTenant=true');
     }
-  }, [isLoading, router, teams, session]);
+  }, [isLoading, router, tenants, session]);
 
   return <Loading />;
 };
