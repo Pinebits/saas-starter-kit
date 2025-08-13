@@ -16,7 +16,7 @@ const Navigation = () => {
     }
   }, [asPath, isReady]);
 
-  const Navigation = () => {
+  const renderNavigation = () => {
     if (slug) {
       return <TenantNavigation activePathname={activePathname} slug={slug} />;
     } else {
@@ -26,7 +26,7 @@ const Navigation = () => {
 
   return (
     <nav className="flex flex-1 flex-col">
-      <Navigation />
+      {renderNavigation()}
     </nav>
   );
 };

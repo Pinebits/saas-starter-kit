@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import * as Yup from 'yup';
 import { slugify } from '@/lib/server-common';
 
-const CreateTenant = ({ visible, setVisible }) => {
+const CreateTenant = ({ setVisible }) => {
   const { t } = useTranslation('common');
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);

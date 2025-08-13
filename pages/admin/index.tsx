@@ -2,14 +2,9 @@ import { GetServerSidePropsContext } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { getSession } from '@/lib/session';
 import AdminDashboard from '@/components/admin/AdminDashboard';
-import AppLayout from '@/components/layouts/AppLayout';
 
 export default function AdminDashboardPage() {
-  return (
-    <AppLayout>
-      <AdminDashboard />
-    </AppLayout>
-  );
+  return <AdminDashboard />;
 }
 
 export async function getServerSideProps(

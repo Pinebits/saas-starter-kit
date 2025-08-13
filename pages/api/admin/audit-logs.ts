@@ -1,8 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { ApiError } from '@/lib/errors';
-import { throwIfNotMasterAdmin } from '@/lib/guards/master-admin';
+import { getCurrentUser } from 'models/user';
 import { prisma } from '@/lib/prisma';
-import { withMiddleware } from '@/lib/middleware';
 import { z } from 'zod';
 
 // Validate query parameters
@@ -17,9 +16,13 @@ const querySchema = z.object({
   to: z.coerce.date().optional(),
 });
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only master admins can access this endpoint
-  await throwIfNotMasterAdmin(req, res);
+  const user = await getCurrentUser(req, res);
+  if (!user || !user.isMasterAdmin) {
+    res.setHeader('Allow', ['GET']);
+    throw new ApiError(405, `Method ${req.method} Not Allowed`);
+  }
 
   if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET']);
@@ -72,5 +75,3 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   });
 }
-
-export default withMiddleware(handler);

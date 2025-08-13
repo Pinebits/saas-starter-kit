@@ -1,13 +1,23 @@
 import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Card, Button, Input, FormErrorMessage } from '@/components/shared';
+import { Card, Button, InputWithLabel } from '@/components/shared';
 import { useFormik } from 'formik';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/router';
 import * as Yup from 'yup';
-import { slugify } from '@/lib/server-common';
 
-const TenantSettings = ({ tenant }) => {
+interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  domain?: string;
+}
+
+interface TenantSettingsProps {
+  tenant: Tenant;
+}
+
+const TenantSettings = ({ tenant }: TenantSettingsProps) => {
   const { t } = useTranslation('common');
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -64,7 +74,7 @@ const TenantSettings = ({ tenant }) => {
         <Card.Body>
           <form onSubmit={formik.handleSubmit}>
             <div className="space-y-4">
-              <Input
+              <InputWithLabel
                 name="name"
                 label={t('tenant-name')}
                 placeholder={t('enter-tenant-name')}
@@ -75,7 +85,7 @@ const TenantSettings = ({ tenant }) => {
                 required
               />
               
-              <Input
+              <InputWithLabel
                 name="slug"
                 label={t('tenant-slug')}
                 placeholder={t('enter-tenant-slug')}
@@ -86,7 +96,7 @@ const TenantSettings = ({ tenant }) => {
                 required
               />
               
-              <Input
+              <InputWithLabel
                 name="domain"
                 label={t('tenant-domain')}
                 placeholder={t('enter-tenant-domain')}
@@ -99,8 +109,8 @@ const TenantSettings = ({ tenant }) => {
               <div className="flex justify-end">
                 <Button
                   type="submit"
-                  disabled={isSubmitting || !formik.isValid}
                   loading={isSubmitting}
+                  disabled={isSubmitting}
                 >
                   {t('save-changes')}
                 </Button>

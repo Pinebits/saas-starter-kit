@@ -1,0 +1,68 @@
+---
+alwaysApply: true
+---
+## Import Order
+1. React and Next.js imports
+2. Third-party libraries
+3. Internal components and utilities
+4. Types and interfaces
+5. Constants and static data
+
+## Code Examples
+
+### Component Template
+```typescript
+import React from 'react';
+import { useTranslation } from 'next-i18next';
+
+interface ComponentNameProps {
+  title: string;
+  onAction: () => void;
+}
+
+export default function ComponentName({ title, onAction }: ComponentNameProps) {
+  const { t } = useTranslation('common');
+  
+  return (
+    <div className="p-4">
+      <h1 className="text-xl font-semibold">{title}</h1>
+      <button onClick={onAction} className="btn btn-primary">
+        {t('action')}
+      </button>
+    </div>
+  );
+}
+```
+
+### API Route Template
+```typescript
+import { NextApiRequest, NextApiResponse } from 'next';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/nextAuth';
+
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  const session = await getServerSession(req, res, authOptions);
+  
+  if (!session) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // Implementation here
+}
+```
+
+## Remember
+- Follow established patterns in the codebase
+- Maintain consistency with existing code
+- Use TypeScript strictly
+- Implement proper error handling
+- Test your changes thoroughly
+- Follow security best practices
+- Use proper naming conventions
+- Implement responsive design
+- Handle loading and error states
+- Use proper authentication and authorization
+- Use test-driven development method

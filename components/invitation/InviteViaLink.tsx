@@ -1,172 +1,122 @@
-import * as Yup from 'yup';
-import { mutate } from 'swr';
-import { useFormik } from 'formik';
-import toast from 'react-hot-toast';
-import React, { useState } from 'react';
-import { Button, Input } from 'react-daisyui';
+import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-
-import type { ApiResponse } from 'types';
-import useInvitations from 'hooks/useInvitations';
-import { availableRoles } from '@/lib/permissions';
-import type { Team } from '@prisma/client';
-import { defaultHeaders, isValidDomain, maxLengthPolicies } from '@/lib/common';
-import { InputWithCopyButton } from '../shared';
-import ConfirmationDialog from '../shared/ConfirmationDialog';
+import { useSWR } from 'swr';
+import { Button, InputWithLabel } from '@/components/shared';
+import toast from 'react-hot-toast';
+import type { Tenant } from '@prisma/client';
 
 interface InviteViaLinkProps {
-  team: Team;
+  tenant: Tenant;
 }
 
-const InviteViaLink = ({ team }: InviteViaLinkProps) => {
-  const [showDelDialog, setShowDelDialog] = useState(false);
+const InviteViaLink = ({ tenant }: InviteViaLinkProps) => {
   const { t } = useTranslation('common');
-  const { invitations } = useInvitations({
-    slug: team.slug,
-    sentViaEmail: false,
-  });
+  const [inviteLink, setInviteLink] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const FormValidationSchema = Yup.object().shape({
-    domains: Yup.string()
-      .nullable()
-      .max(maxLengthPolicies.domains)
-      .test(
-        'domains',
-        'Enter one or more valid domains, separated by commas.',
-        (value) => {
-          if (!value) {
-            return true;
-          }
+  const { data: invitations, mutate } = useSWR(`/api/tenants/${tenant.slug}/invitations?sentViaEmail=false`);
 
-          return value.split(',').every(isValidDomain);
-        }
-      ),
-    role: Yup.string()
-      .required(t('required-role'))
-      .oneOf(availableRoles.map((r) => r.id)),
-  });
-
-  // Create a new invitation link
-  const formik = useFormik({
-    initialValues: {
-      domains: '',
-      role: availableRoles[0].id,
-      sentViaEmail: false,
-    },
-    validationSchema: FormValidationSchema,
-    onSubmit: async (values) => {
-      const response = await fetch(`/api/teams/${team.slug}/invitations`, {
+  const generateInviteLink = async () => {
+    setIsGenerating(true);
+    try {
+      const response = await fetch(`/api/tenants/${tenant.slug}/invitations`, {
         method: 'POST',
-        headers: defaultHeaders,
-        body: JSON.stringify(values),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          sentViaEmail: false,
+        }),
       });
 
       if (!response.ok) {
-        const result = (await response.json()) as ApiResponse;
-        toast.error(result.error.message);
-        return;
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate invite link');
       }
 
-      mutate(`/api/teams/${team.slug}/invitations?sentViaEmail=false`);
-      toast.success(t('invitation-link-created'));
-      formik.resetForm();
-    },
-  });
-
-  // Delete an existing invitation link
-  const deleteInvitationLink = async (id: string) => {
-    const response = await fetch(
-      `/api/teams/${team.slug}/invitations?id=${id}`,
-      {
-        method: 'DELETE',
-        headers: defaultHeaders,
-      }
-    );
-
-    if (!response.ok) {
-      const result = (await response.json()) as ApiResponse;
-      toast.error(result.error.message);
-      return;
+      const result = await response.json();
+      setInviteLink(result.data.inviteLink);
+      toast.success(t('invite-link-generated'));
+      mutate(`/api/tenants/${tenant.slug}/invitations?sentViaEmail=false`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setIsGenerating(false);
     }
-
-    mutate(`/api/teams/${team.slug}/invitations?sentViaEmail=false`);
-    toast.success(t('invitation-link-deleted'));
-    setShowDelDialog(false);
   };
 
-  const invitation = invitations ? invitations[0] : null;
+  const deleteInviteLink = async (id: string) => {
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/tenants/${tenant.slug}/invitations?id=${id}`, {
+        method: 'DELETE',
+      });
 
-  if (invitation) {
-    return (
-      <div className="pt-4">
-        <InputWithCopyButton
-          label={t('share-invitation-link')}
-          value={invitation.url}
-          className="text-sm w-full"
-        />
-        <p className="text-sm text-slate-500 my-2">
-          {invitation.allowedDomains.length > 0
-            ? `Anyone with an email address ending with ${invitation.allowedDomains} can use this link to join your team.`
-            : 'Anyone can use this link to join your team.'}
-          <Button
-            className="btn btn-xs btn-link link-error"
-            onClick={() => setShowDelDialog(true)}
-          >
-            {t('delete-link')}
-          </Button>
-        </p>
-        <ConfirmationDialog
-          visible={showDelDialog}
-          onCancel={() => setShowDelDialog(false)}
-          onConfirm={() => deleteInvitationLink(invitation.id)}
-          title={t('delete-invitation-link')}
-        >
-          {t('delete-invitation-warning')}
-        </ConfirmationDialog>
-      </div>
-    );
-  }
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete invite link');
+      }
+
+      toast.success(t('invite-link-deleted'));
+      mutate(`/api/tenants/${tenant.slug}/invitations?sentViaEmail=false`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
-    <form onSubmit={formik.handleSubmit} method="POST" className="pt-4">
-      <h3 className="font-medium text-[14px] pb-2">{t('invite-via-link')}</h3>
-      <div className="flex gap-1">
-        <Input
-          name="domains"
-          onChange={formik.handleChange}
-          value={formik.values.domains}
-          placeholder="Restrict domain: boxyhq.com"
-          className="text-sm w-1/2"
-        />
-        <select
-          className="select-bordered select rounded"
-          name="role"
-          onChange={formik.handleChange}
-          value={formik.values.role}
-          required
-        >
-          {availableRoles.map((role) => (
-            <option value={role.id} key={role.id}>
-              {role.name}
-            </option>
-          ))}
-        </select>
+    <div className="p-4">
+      <h3 className="text-lg font-medium mb-4">{t('invite-via-link')}</h3>
+      <div className="space-y-4">
         <Button
-          type="submit"
-          color="primary"
-          loading={formik.isSubmitting}
-          disabled={!formik.isValid}
-          className="flex-grow"
+          onClick={generateInviteLink}
+          loading={isGenerating}
+          disabled={isGenerating}
         >
-          {t('create-link')}
+          {t('generate-invite-link')}
         </Button>
+
+        {inviteLink && (
+          <div className="space-y-2">
+            <InputWithLabel
+              label={t('invite-link')}
+              value={inviteLink}
+              readOnly
+            />
+            <Button
+              onClick={() => navigator.clipboard.writeText(inviteLink)}
+              variant="outline"
+              size="sm"
+            >
+              {t('copy-link')}
+            </Button>
+          </div>
+        )}
+
+        {invitations?.data?.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="font-medium">{t('active-invite-links')}</h4>
+            {invitations.data.map((invitation: any) => (
+              <div key={invitation.id} className="flex items-center justify-between p-2 border rounded">
+                <span className="text-sm">{invitation.inviteLink}</span>
+                <Button
+                  onClick={() => deleteInviteLink(invitation.id)}
+                  variant="outline"
+                  size="xs"
+                  loading={isDeleting}
+                  disabled={isDeleting}
+                >
+                  {t('delete')}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-      <p className="text-sm text-slate-500 my-2">
-        {formik.values.domains && !formik.errors.domains
-          ? `Anyone with an email address ending with ${formik.values.domains} can use this link to join your team.`
-          : 'Anyone can use this link to join your team.'}
-      </p>
-    </form>
+    </div>
   );
 };
 

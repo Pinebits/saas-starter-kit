@@ -2,9 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { ApiError } from '@/lib/errors';
 import { getTenants } from 'models/tenant';
 import { getCurrentUser } from 'models/user';
-import { withMiddleware } from '@/lib/middleware';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const user = await getCurrentUser(req, res);
 
   if (req.method !== 'GET') {
@@ -16,5 +15,3 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const tenants = await getTenants({ userId: user.id });
   return res.status(200).json({ data: tenants });
 }
-
-export default withMiddleware(handler);

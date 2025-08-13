@@ -2,11 +2,9 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { ApiError } from '@/lib/errors';
 import { createTenant, getTenants } from 'models/tenant';
 import { getCurrentUser } from 'models/user';
-import { z } from 'zod';
-import { withMiddleware } from '@/lib/middleware';
-import { tenantCreateSchema } from '@/lib/zod';
+import { slugify } from '@/lib/server-common';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const user = await getCurrentUser(req, res);
 
   switch (req.method) {
@@ -41,5 +39,3 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new ApiError(405, `Method ${req.method} Not Allowed`);
   }
 }
-
-export default withMiddleware(handler);

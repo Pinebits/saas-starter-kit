@@ -6,11 +6,11 @@ import { Tabs } from '@/components/shared';
 import { TenantSettings, Members } from '@/components/tenant';
 import { useTranslation } from 'next-i18next';
 import useSWR from 'swr';
-import fetcher from '@/lib/fetcher';
+import { fetcher } from '@/lib/fetcher';
 import { useRouter } from 'next/router';
-import { getAuthOptions } from '@/lib/nextAuth';
+import { authOptions } from '@/lib/nextAuth';
 
-export default function TenantSettingsPage() {
+export default function TenantDetailPage() {
   const { t } = useTranslation('common');
   const router = useRouter();
   const { slug } = router.query as { slug: string };
@@ -26,24 +26,23 @@ export default function TenantSettingsPage() {
     );
   }
 
-  if (error) {
+  if (error || !tenant) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-red-600">Error loading tenant: {error.message}</div>
-      </div>
-    );
-  }
-
-  if (!tenant) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg text-red-600">Tenant not found</div>
+        <div className="text-lg text-red-600">Error loading tenant</div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col space-y-4">
+    <div className="flex flex-col space-y-6">
+      {/* Header */}
+      <div className="border-b border-gray-200 pb-4">
+        <h1 className="text-3xl font-bold text-gray-900">{tenant.name}</h1>
+        <p className="text-gray-600 mt-2">Tenant Dashboard</p>
+      </div>
+
+      {/* Tabs */}
       <Tabs
         tabs={[
           {
@@ -68,7 +67,6 @@ export async function getServerSideProps({
   req,
   res,
 }: GetServerSidePropsContext) {
-  const authOptions = getAuthOptions(req, res);
   const session = await getServerSession(req, res, authOptions);
 
   if (!session) {
@@ -88,7 +86,6 @@ export async function getServerSideProps({
 
     return {
       props: {
-        tenantSlug: slug,
         ...(await serverSideTranslations(locale || 'en', ['common'])),
       },
     };

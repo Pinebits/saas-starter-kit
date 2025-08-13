@@ -359,6 +359,11 @@ export const getAuthOptions = (
         // When using JWT for sessions, the JWT payload (token) is provided.
         // When using database sessions, the User (user) object is provided.
         if (session && (token || user)) {
+          // Ensure session.user exists
+          if (!session.user) {
+            session.user = {};
+          }
+          
           session.user.id = token?.sub || user?.id;
           
           // Add isMasterAdmin flag to session
@@ -371,12 +376,7 @@ export const getAuthOptions = (
             session.user.isMasterAdmin = dbUser?.isMasterAdmin || false;
           } else if (token) {
             // For JWT session strategy
-            const dbUser = await prisma.user.findUnique({
-              where: { id: token.sub },
-              select: { isMasterAdmin: true }
-            });
-            
-            session.user.isMasterAdmin = dbUser?.isMasterAdmin || false;
+            session.user.isMasterAdmin = token.isMasterAdmin || false;
           }
         }
 
@@ -405,6 +405,16 @@ export const getAuthOptions = (
 
         if (trigger === 'update' && 'name' in session && session.name) {
           return { ...token, name: session.name };
+        }
+
+        // Add isMasterAdmin to JWT token if not present
+        if (token && !token.isMasterAdmin && token.sub) {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.sub },
+            select: { isMasterAdmin: true }
+          });
+          
+          token.isMasterAdmin = dbUser?.isMasterAdmin || false;
         }
 
         return token;

@@ -1,42 +1,49 @@
 import type { GetServerSidePropsContext } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { getSession } from 'next-auth/react';
-import AppLayout from '@/components/layouts/AppLayout';
+import { getServerSession } from 'next-auth';
 import { getTenant } from 'models/tenant';
-import { Tabs } from '@/components/shared';
-import { TenantSettings, Members } from '@/components/tenant';
+import { Members } from '@/components/tenant';
 import { useTranslation } from 'next-i18next';
 import useSWR from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { useRouter } from 'next/router';
+import { authOptions } from '@/lib/nextAuth';
 
-export default function MembersPage() {
+export default function TenantMembersPage() {
   const { t } = useTranslation('common');
   const router = useRouter();
   const { slug } = router.query as { slug: string };
   
-  const { data } = useSWR(`/api/tenants/${slug}`, fetcher);
+  const { data, error, isLoading } = useSWR(`/api/tenants/${slug}`, fetcher);
   const tenant = data?.data;
 
-  return (
-    <AppLayout>
-      <div className="flex flex-col space-y-4">
-        <Tabs
-          tabs={[
-            {
-              name: t('general'),
-              href: `/tenants/${slug}/settings`,
-              panel: <TenantSettings />,
-            },
-            {
-              name: t('members'),
-              href: `/tenants/${slug}/members`,
-              panel: tenant ? <Members tenant={tenant} /> : null,
-            },
-          ]}
-        />
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading...</div>
       </div>
-    </AppLayout>
+    );
+  }
+
+  if (error || !tenant) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg text-red-600">Error loading tenant</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col space-y-6">
+      {/* Header */}
+      <div className="border-b border-gray-200 pb-4">
+        <h1 className="text-3xl font-bold text-gray-900">{t('members')}</h1>
+        <p className="text-gray-600 mt-2">{t('manage-tenant-members')}</p>
+      </div>
+
+      {/* Members Component */}
+      <Members tenant={tenant} />
+    </div>
   );
 }
 
@@ -46,7 +53,7 @@ export async function getServerSideProps({
   req,
   res,
 }: GetServerSidePropsContext) {
-  const session = await getSession({ req });
+  const session = await getServerSession(req, res, authOptions);
 
   if (!session) {
     return {

@@ -5,9 +5,11 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useRouter } from 'next/router';
 import { useEffect } from 'react';
 import type { NextPageWithLayout } from 'types';
+import { useSession } from 'next-auth/react';
 
 const Dashboard: NextPageWithLayout = () => {
   const router = useRouter();
+  const { data: session } = useSession();
   const { teams, isLoading } = useTeams();
 
   useEffect(() => {
@@ -15,12 +17,19 @@ const Dashboard: NextPageWithLayout = () => {
       return;
     }
 
-    if (teams.length > 0) {
-      router.push(`/teams/${teams[0].slug}/settings`);
-    } else {
-      router.push('teams?newTeam=true');
+    // If user is a master admin, redirect to admin panel
+    if (session?.user?.isMasterAdmin) {
+      router.push('/admin');
+      return;
     }
-  }, [isLoading, router, teams]);
+
+    // For regular users, redirect to their first tenant
+    if (teams.length > 0) {
+      router.push(`/tenants/${teams[0].slug}`);
+    } else {
+      router.push('tenants?newTenant=true');
+    }
+  }, [isLoading, router, teams, session]);
 
   return <Loading />;
 };

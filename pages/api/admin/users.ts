@@ -1,8 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { ApiError } from '@/lib/errors';
-import { throwIfNotMasterAdmin } from '@/lib/guards/master-admin';
+import { getUser } from 'models/user';
+import { getCurrentUser } from 'models/user';
 import { prisma } from '@/lib/prisma';
-import { withMiddleware } from '@/lib/middleware';
 import { z } from 'zod';
 
 const userSchema = z.object({
@@ -10,12 +10,16 @@ const userSchema = z.object({
   isMasterAdmin: z.boolean(),
 });
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Only master admins can access this endpoint
-  const adminUser = await throwIfNotMasterAdmin(req, res);
+  const adminUser = await getCurrentUser(req, res);
+  
+  if (!adminUser.isMasterAdmin) {
+    throw new ApiError(403, 'Only master administrators can access this endpoint');
+  }
 
   switch (req.method) {
-    case 'GET':
+    case 'GET': {
       // Get all users with their master admin status
       const users = await prisma.user.findMany({
         select: {
@@ -33,8 +37,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
       
       return res.status(200).json({ data: users });
+    }
 
-    case 'PATCH':
+    case 'PATCH': {
       // Update a user's master admin status
       const { userId, isMasterAdmin } = userSchema.parse(req.body);
       
@@ -86,11 +91,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
       
       return res.status(200).json({ data: updatedUser });
+    }
 
-    default:
+    default: {
       res.setHeader('Allow', ['GET', 'PATCH']);
       throw new ApiError(405, `Method ${req.method} Not Allowed`);
+    }
   }
 }
-
-export default withMiddleware(handler);

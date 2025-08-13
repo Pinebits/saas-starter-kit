@@ -1,11 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import { getSession } from '@/lib/session';
 import { findOrCreateApp } from '@/lib/svix';
-import { Role, Team } from '@prisma/client';
+import { Role, Tenant } from '@prisma/client';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getCurrentUser } from './user';
 import { normalizeUser } from './user';
 import { validateWithSchema, teamSlugSchema } from '@/lib/zod';
+
+// Compatibility layer: Redirect team operations to tenant operations
 
 export const createTeam = async (param: {
   userId: string;
@@ -14,24 +16,26 @@ export const createTeam = async (param: {
 }) => {
   const { userId, name, slug } = param;
 
-  const team = await prisma.team.create({
+  // Create tenant instead of team
+  const tenant = await prisma.tenant.create({
     data: {
       name,
       slug,
     },
   });
 
-  await addTeamMember(team.id, userId, Role.OWNER);
+  // Add user as tenant member with OWNER role
+  await addTeamMember(tenant.id, userId, Role.OWNER);
 
-  await findOrCreateApp(team.name, team.id);
+  await findOrCreateApp(tenant.name, tenant.id);
 
-  return team;
+  return tenant;
 };
 
 export const getByCustomerId = async (
   billingId: string
-): Promise<Team | null> => {
-  return await prisma.team.findFirst({
+): Promise<Tenant | null> => {
+  return await prisma.tenant.findFirst({
     where: {
       billingId,
     },
@@ -39,13 +43,13 @@ export const getByCustomerId = async (
 };
 
 export const getTeam = async (key: { id: string } | { slug: string }) => {
-  return await prisma.team.findUniqueOrThrow({
+  return await prisma.tenant.findUniqueOrThrow({
     where: key,
   });
 };
 
 export const deleteTeam = async (key: { id: string } | { slug: string }) => {
-  return await prisma.team.delete({
+  return await prisma.tenant.delete({
     where: key,
   });
 };
@@ -55,9 +59,10 @@ export const addTeamMember = async (
   userId: string,
   role: Role
 ) => {
-  return await prisma.teamMember.upsert({
+  // teamId is now tenantId
+  return await prisma.tenantMember.upsert({
     create: {
-      teamId,
+      tenantId: teamId,
       userId,
       role,
     },
@@ -65,8 +70,8 @@ export const addTeamMember = async (
       role,
     },
     where: {
-      teamId_userId: {
-        teamId,
+      tenantId_userId: {
+        tenantId: teamId,
         userId,
       },
     },
@@ -74,10 +79,11 @@ export const addTeamMember = async (
 };
 
 export const removeTeamMember = async (teamId: string, userId: string) => {
-  return await prisma.teamMember.delete({
+  // teamId is now tenantId
+  return await prisma.tenantMember.delete({
     where: {
-      teamId_userId: {
-        teamId,
+      tenantId_userId: {
+        tenantId: teamId,
         userId,
       },
     },
@@ -148,7 +154,7 @@ Planning Time: 2.566 ms
 Execution Time: 0.322 ms
 */
 export const getTeams = async (userId: string) => {
-  return await prisma.team.findMany({
+  return await prisma.tenant.findMany({
     where: {
       members: {
         some: {
@@ -165,12 +171,12 @@ export const getTeams = async (userId: string) => {
 };
 
 export async function getTeamRoles(userId: string) {
-  return await prisma.teamMember.findMany({
+  return await prisma.tenantMember.findMany({
     where: {
       userId,
     },
     select: {
-      teamId: true,
+      tenantId: true,
       role: true,
     },
   });
@@ -178,11 +184,11 @@ export async function getTeamRoles(userId: string) {
 
 // Check if the user is an admin or owner of the team
 export async function isTeamAdmin(userId: string, teamId: string) {
-  const teamMember = await prisma.teamMember.findUniqueOrThrow({
+  const teamMember = await prisma.tenantMember.findUniqueOrThrow({
     where: {
-      teamId_userId: {
+      tenantId_userId: {
         userId,
-        teamId,
+        tenantId: teamId,
       },
     },
   });
@@ -244,9 +250,9 @@ Planning Time: 0.351 ms
 Execution Time: 0.045 ms
 */
 export const getTeamMembers = async (slug: string) => {
-  const members = await prisma.teamMember.findMany({
+  const members = await prisma.tenantMember.findMany({
     where: {
-      team: {
+      tenant: {
         slug,
       },
     },
@@ -267,8 +273,8 @@ export const getTeamMembers = async (slug: string) => {
   });
 };
 
-export const updateTeam = async (slug: string, data: Partial<Team>) => {
-  return await prisma.team.update({
+export const updateTeam = async (slug: string, data: Partial<Tenant>) => {
+  return await prisma.tenant.update({
     where: {
       slug,
     },
@@ -309,7 +315,7 @@ Planning Time: 0.352 ms
 Execution Time: 0.055 ms
 */
 export const isTeamExists = async (slug: string) => {
-  return await prisma.team.count({
+  return await prisma.tenant.count({
     where: {
       slug,
     },
@@ -414,10 +420,10 @@ Execution Time: 0.050 ms
 
 // Get the current user's team member object
 export const getTeamMember = async (userId: string, slug: string) => {
-  return await prisma.teamMember.findFirstOrThrow({
+  return await prisma.tenantMember.findFirstOrThrow({
     where: {
       userId,
-      team: {
+      tenant: {
         slug,
       },
       role: {
@@ -425,7 +431,7 @@ export const getTeamMember = async (userId: string, slug: string) => {
       },
     },
     include: {
-      team: true,
+      tenant: true,
     },
   });
 };
@@ -439,11 +445,11 @@ export const getCurrentUserWithTeam = async (
 
   const { slug } = validateWithSchema(teamSlugSchema, req.query);
 
-  const { role, team } = await getTeamMember(user.id, slug);
+  const { role, tenant } = await getTeamMember(user.id, slug);
 
   return {
     ...user,
     role,
-    team,
+    team: tenant, // Keep team for backward compatibility
   };
 };

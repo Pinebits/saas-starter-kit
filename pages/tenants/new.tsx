@@ -1,14 +1,12 @@
 import type { GetServerSidePropsContext } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { getSession } from 'next-auth/react';
-import AppLayout from '@/components/layouts/AppLayout';
+import { getServerSession } from 'next-auth';
 import { CreateTenant } from '@/components/tenant';
+import { getAuthOptions } from '@/lib/nextAuth';
 
 export default function NewTenantPage() {
   return (
-    <AppLayout>
-      <CreateTenant visible={true} setVisible={() => {}} />
-    </AppLayout>
+    <CreateTenant visible={true} setVisible={() => {}} />
   );
 }
 
@@ -17,7 +15,8 @@ export async function getServerSideProps({
   req,
   res,
 }: GetServerSidePropsContext) {
-  const session = await getSession({ req });
+  const authOptions = getAuthOptions(req, res);
+  const session = await getServerSession(req, res, authOptions);
 
   if (!session) {
     return {

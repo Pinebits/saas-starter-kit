@@ -1,29 +1,20 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { GetServerSidePropsContext } from 'next';
-import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import type { NextPageWithLayout } from 'types';
 
-const TeamsRedirect: NextPageWithLayout = () => {
+export default function TeamsRedirectPage() {
   const router = useRouter();
-  
+
   useEffect(() => {
-    // Get any query parameters
-    const query = new URLSearchParams(router.asPath.split('?')[1] || '');
-    
-    // Redirect to tenants with the same query parameters
-    router.replace(`/tenants${query.toString() ? `?${query.toString()}` : ''}`);
+    // Redirect from /teams to /tenants
+    router.replace('/tenants');
   }, [router]);
-  
-  return null;
-};
 
-export async function getStaticProps({ locale }: GetServerSidePropsContext) {
-  return {
-    props: {
-      ...(locale ? await serverSideTranslations(locale, ['common']) : {}),
-    },
-  };
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h1 className="text-xl font-semibold mb-2">Redirecting...</h1>
+        <p className="text-gray-600">Redirecting from teams to tenants...</p>
+      </div>
+    </div>
+  );
 }
-
-export default TeamsRedirect;

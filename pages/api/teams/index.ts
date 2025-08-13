@@ -1,6 +1,6 @@
 import { slugify } from '@/lib/server-common';
 import { ApiError } from '@/lib/errors';
-import { createTeam, getTeams, isTeamExists } from 'models/team';
+import { createTenant, getTenants } from 'models/tenant';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import { createTeamSchema, validateWithSchema } from '@/lib/zod';
@@ -34,34 +34,38 @@ export default async function handler(
   }
 }
 
-// Get teams
+// Get teams (now tenants)
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const user = await getCurrentUser(req, res);
-  const teams = await getTeams(user.id);
+  const tenants = await getTenants({ userId: user.id });
 
   recordMetric('team.fetched');
 
-  res.status(200).json({ data: teams });
+  res.status(200).json({ data: tenants });
 };
 
-// Create a team
+// Create a team (now tenant)
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const { name } = validateWithSchema(createTeamSchema, req.body);
 
   const user = await getCurrentUser(req, res);
   const slug = slugify(name);
 
-  if (await isTeamExists(slug)) {
+  // Check if tenant already exists
+  const existingTenants = await getTenants({ userId: user.id });
+  if (existingTenants.some(tenant => tenant.slug === slug)) {
     throw new ApiError(400, 'A team with the slug already exists.');
   }
 
-  const team = await createTeam({
-    userId: user.id,
+  // Note: Only master admins can create tenants via API
+  // Regular users should use the tenant creation flow
+  const tenant = await createTenant({
+    createdByUserId: user.id,
     name,
     slug,
   });
 
   recordMetric('team.created');
 
-  res.status(200).json({ data: team });
+  res.status(200).json({ data: tenant });
 };

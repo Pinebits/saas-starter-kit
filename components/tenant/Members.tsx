@@ -2,18 +2,23 @@ import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSession } from 'next-auth/react';
 import { Tenant, Role } from '@prisma/client';
-import { Button, Card, Badge, Avatar, Confirm } from '@/components/shared';
+import { Button, Card, Badge, Avatar, ConfirmationDialog } from '@/components/shared';
 import useTenantMembers, { TenantMemberWithUser } from '@/hooks/useTenantMembers';
 import InviteMember from '@/components/invitation/InviteMember';
 import toast from 'react-hot-toast';
 
-const UpdateMemberRole = ({ tenant, member }) => {
+interface UpdateMemberRoleProps {
+  tenant: Tenant;
+  member: TenantMemberWithUser;
+}
+
+const UpdateMemberRole = ({ tenant, member }: UpdateMemberRoleProps) => {
   const { t } = useTranslation('common');
   const { data: session } = useSession();
   const { mutateTenantMembers } = useTenantMembers(tenant.slug);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRoleChange = async (newRole) => {
+  const handleRoleChange = async (newRole: Role) => {
     setIsSubmitting(true);
     try {
       // Only master admins can update tenant member roles
@@ -41,7 +46,7 @@ const UpdateMemberRole = ({ tenant, member }) => {
       mutateTenantMembers();
       toast.success(t('role-updated'));
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -70,7 +75,11 @@ const UpdateMemberRole = ({ tenant, member }) => {
   );
 };
 
-const Members = ({ tenant }: { tenant: Tenant }) => {
+interface MembersProps {
+  tenant: Tenant;
+}
+
+const Members = ({ tenant }: MembersProps) => {
   const { t } = useTranslation('common');
   const { data: session } = useSession();
   const [visible, setVisible] = useState(false);
@@ -101,15 +110,16 @@ const Members = ({ tenant }: { tenant: Tenant }) => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message);
+        throw new Error(error.message || 'Failed to remove member');
       }
 
+      mutateTenantMembers();
       toast.success(t('member-removed'));
+      setShowConfirm(false);
+      setSelectedMember(null);
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     }
-
-    mutateTenantMembers();
   };
 
   if (isLoading) {
@@ -173,7 +183,7 @@ const Members = ({ tenant }: { tenant: Tenant }) => {
                               setSelectedMember(member);
                               setShowConfirm(true);
                             }}
-                            variant="danger"
+                            variant="outline"
                             size="sm"
                           >
                             {t('remove')}
@@ -189,18 +199,18 @@ const Members = ({ tenant }: { tenant: Tenant }) => {
         </Card.Body>
       </Card>
 
-      <Confirm
+      <ConfirmationDialog
         title={t('remove-member')}
-        description={t('remove-member-confirm', {
-          name: selectedMember?.user?.name,
-        })}
         visible={showConfirm}
-        onClose={() => setShowConfirm(false)}
         onConfirm={() => {
           removeTenantMember(selectedMember);
-          setShowConfirm(false);
         }}
-      />
+        onCancel={() => setShowConfirm(false)}
+      >
+        {t('remove-member-confirm', {
+          name: selectedMember?.user?.name,
+        })}
+      </ConfirmationDialog>
 
       <InviteMember visible={visible} setVisible={setVisible} tenant={tenant} />
     </>

@@ -26,7 +26,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
   const navigations = [
     {
       name: 'Settings',
-      href: `/teams/${team.slug}/settings`,
+      href: `/tenants/${team.slug}/settings`,
       active: activeTab === 'settings',
       icon: Cog6ToothIcon,
     },
@@ -35,7 +35,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
   if (canAccess('team_member', ['create', 'update', 'read', 'delete'])) {
     navigations.push({
       name: 'Members',
-      href: `/teams/${team.slug}/members`,
+      href: `/tenants/${team.slug}/members`,
       active: activeTab === 'members',
       icon: UserPlusIcon,
     });
@@ -47,7 +47,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
   ) {
     navigations.push({
       name: 'Single Sign-On',
-      href: `/teams/${team.slug}/sso`,
+      href: `/tenants/${team.slug}/sso`,
       active: activeTab === 'sso',
       icon: ShieldExclamationIcon,
     });
@@ -59,7 +59,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
   ) {
     navigations.push({
       name: 'Directory Sync',
-      href: `/teams/${team.slug}/directory-sync`,
+      href: `/tenants/${team.slug}/directory-sync`,
       active: activeTab === 'directory-sync',
       icon: UserPlusIcon,
     });
@@ -71,7 +71,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
   ) {
     navigations.push({
       name: 'Audit Logs',
-      href: `/teams/${team.slug}/audit-logs`,
+      href: `/tenants/${team.slug}/audit-logs`,
       active: activeTab === 'audit-logs',
       icon: DocumentMagnifyingGlassIcon,
     });
@@ -83,7 +83,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
   ) {
     navigations.push({
       name: 'Billing',
-      href: `/teams/${team.slug}/billing`,
+      href: `/tenants/${team.slug}/billing`,
       active: activeTab === 'payments',
       icon: BanknotesIcon,
     });
@@ -95,7 +95,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
   ) {
     navigations.push({
       name: 'Webhooks',
-      href: `/teams/${team.slug}/webhooks`,
+      href: `/tenants/${team.slug}/webhooks`,
       active: activeTab === 'webhooks',
       icon: PaperAirplaneIcon,
     });
@@ -107,7 +107,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
   ) {
     navigations.push({
       name: 'API Keys',
-      href: `/teams/${team.slug}/api-keys`,
+      href: `/tenants/${team.slug}/api-keys`,
       active: activeTab === 'api-keys',
       icon: KeyIcon,
     });

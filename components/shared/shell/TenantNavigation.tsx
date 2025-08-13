@@ -1,32 +1,33 @@
+import { Cog6ToothIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'next-i18next';
-import { Navigation } from '@/components/shared';
+import NavigationItems from './NavigationItems';
+import { NavigationProps, MenuItem } from './NavigationItems';
 
-type NavigationItemsProps = {
+interface NavigationItemsProps extends NavigationProps {
   slug: string;
-  activePathname?: string;
-};
+}
 
 const TenantNavigation = ({ slug, activePathname }: NavigationItemsProps) => {
   const { t } = useTranslation('common');
 
-  const items = [
+  const menus: MenuItem[] = [
     {
       name: t('products'),
       href: `/tenants/${slug}/products`,
-      icon: 'store',
+      icon: CodeBracketIcon,
       active: activePathname === `/tenants/${slug}/products`,
     },
     {
       name: t('settings'),
       href: `/tenants/${slug}/settings`,
-      icon: 'settings',
+      icon: Cog6ToothIcon,
       active:
         activePathname?.startsWith(`/tenants/${slug}`) &&
         !activePathname?.startsWith(`/tenants/${slug}/products`),
     },
   ];
 
-  return <Navigation items={items} />;
+  return <NavigationItems menus={menus} />;
 };
 
 export default TenantNavigation;

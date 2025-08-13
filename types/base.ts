@@ -16,7 +16,7 @@ export type ApiResponse<T = unknown> =
       error: ApiError;
     };
 
-export type TeamWithMemberCount = Prisma.TeamGetPayload<{
+export type TeamWithMemberCount = Prisma.TenantGetPayload<{
   include: {
     _count: {
       select: { members: true };

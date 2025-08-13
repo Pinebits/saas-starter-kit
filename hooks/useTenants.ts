@@ -12,7 +12,7 @@ export const useTenants = (options: TenantOptions = {}) => {
   const isMasterAdmin = session?.user?.isMasterAdmin === true;
 
   // Use the admin endpoint if isAdmin is true and user is a master admin
-  const endpoint = isAdmin && isMasterAdmin ? '/api/tenants' : '/api/user/tenants';
+  const endpoint = isAdmin && isMasterAdmin ? '/api/tenants' : '/api/teams';
 
   const { data, error, mutate } = useSWR(session ? endpoint : null, fetcher);
 

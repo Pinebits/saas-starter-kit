@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSession } from 'next-auth/react';
-import { Card, Button, Badge, Avatar, Tabs, EmptyState } from '@/components/shared';
-import { useSWR } from '@/hooks/useSWR';
+import { Card, Button, Badge, Tabs, ConfirmationDialog } from '@/components/shared';
+import useSWR from 'swr';
 import Link from 'next/link';
-import { Confirm } from '@/components/shared';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/router';
 
@@ -29,7 +28,7 @@ const useAdminData = (endpoint) => {
 // Users management section
 const UsersList = () => {
   const { t } = useTranslation('common');
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUser] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
@@ -109,10 +108,10 @@ const UsersList = () => {
                   <tr key={user.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <Avatar
-                          src={user.image}
+                        <img
+                          src={user.image || '/user-default-profile.jpeg'}
                           alt={user.name}
-                          className="w-8 h-8 rounded-full"
+                          className="w-8 h-8 rounded-full object-cover"
                         />
                         <div className="ml-4">
                           <div className="font-medium text-gray-900">{user.name}</div>
@@ -152,20 +151,19 @@ const UsersList = () => {
         </Card.Body>
       </Card>
       
-      <Confirm
+      <ConfirmationDialog
         title={t('confirm-action')}
-        description={
-          selectedUser?.isMasterAdmin
-            ? t('confirm-revoke-admin')
-            : t('confirm-make-admin')
-        }
         visible={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        onCancel={() => setShowConfirm(false)}
         onConfirm={() => {
           toggleMasterAdmin(selectedUser.id, selectedUser.isMasterAdmin);
           setShowConfirm(false);
         }}
-      />
+      >
+        {selectedUser?.isMasterAdmin
+          ? t('confirm-revoke-admin')
+          : t('confirm-make-admin')}
+      </ConfirmationDialog>
     </div>
   );
 };
@@ -207,15 +205,13 @@ const TenantsList = () => {
   
   if (tenants.length === 0) {
     return (
-      <EmptyState
-        title={t('no-tenants')}
-        description={t('no-tenants-description')}
-        action={
-          <Button onClick={() => router.push('/admin/tenants/new')}>
-            {t('create-tenant')}
-          </Button>
-        }
-      />
+      <div className="text-center p-4">
+        <h2>{t('no-tenants')}</h2>
+        <p>{t('no-tenants-description')}</p>
+        <Button onClick={() => router.push('/admin/tenants/new')}>
+          {t('create-tenant')}
+        </Button>
+      </div>
     );
   }
   
@@ -293,16 +289,17 @@ const TenantsList = () => {
         </Card.Body>
       </Card>
       
-      <Confirm
+      <ConfirmationDialog
         title={t('confirm-delete')}
-        description={t('confirm-delete-tenant-description', { tenant: selectedTenant?.name })}
         visible={showConfirm}
-        onClose={() => setShowConfirm(false)}
+        onCancel={() => setShowConfirm(false)}
         onConfirm={() => {
           handleDeleteTenant(selectedTenant.slug);
           setShowConfirm(false);
         }}
-      />
+      >
+        {t('confirm-delete-tenant-description', { tenant: selectedTenant?.name })}
+      </ConfirmationDialog>
     </div>
   );
 };
@@ -367,10 +364,10 @@ const AuditLogs = () => {
         </Card.Header>
         <Card.Body>
           {logs.length === 0 ? (
-            <EmptyState
-              title={t('no-audit-logs')}
-              description={t('no-audit-logs-description')}
-            />
+            <div className="text-center p-4">
+              <h2>{t('no-audit-logs')}</h2>
+              <p>{t('no-audit-logs-description')}</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -450,7 +447,7 @@ const AuditLogs = () => {
 // Main admin dashboard component
 const AdminDashboard = () => {
   const { t } = useTranslation('common');
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   
   // Redirect if not a master admin
@@ -459,6 +456,10 @@ const AdminDashboard = () => {
       router.push('/');
     }
   }, [session, router]);
+  
+  if (status === 'loading') {
+    return <div className="text-center p-4">{t('loading')}</div>;
+  }
   
   if (!session) {
     return <div className="text-center p-4">{t('loading')}</div>;

@@ -32,12 +32,17 @@ export default async function handler(
   }
 }
 
-// Get tenant details
+// Get tenant details for admin
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const session = await getServerSession(req, res, authOptions);
 
   if (!session) {
     throw new ApiError(401, 'Unauthorized');
+  }
+
+  // Check if user is master admin
+  if (!session.user?.isMasterAdmin) {
+    throw new ApiError(403, 'Only master administrators can access this endpoint');
   }
 
   const { slug } = req.query;
@@ -50,12 +55,18 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
     // Get tenant details
     const tenant = await getTenant({ slug });
     
-    // For now, just return the tenant without members to test
+    // Get tenant members (with master admin access)
+    const members = await getTenantMembers(slug, session.user.id);
+
+    // Return tenant with members
     res.status(200).json({
-      data: tenant
+      data: {
+        ...tenant,
+        members
+      }
     });
   } catch (error) {
-    console.error('Error in tenant API:', error);
+    console.error('Error in admin tenant API:', error);
     if (error.message === 'Tenant not found') {
       throw new ApiError(404, 'Tenant not found');
     }

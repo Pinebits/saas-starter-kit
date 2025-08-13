@@ -73,6 +73,14 @@ const unAuthenticatedRoutes = [
   '/.well-known/*',
 ];
 
+// Routes that require authentication but are handled by their own auth logic
+const apiRoutesWithOwnAuth = [
+  '/api/teams/**',
+  '/api/tenants/**',
+  '/api/admin/**',
+  '/api/user/**',
+];
+
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -81,6 +89,12 @@ export default async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // For API routes with their own auth, let them handle authentication
+  if (micromatch.isMatch(pathname, apiRoutesWithOwnAuth)) {
+    return NextResponse.next();
+  }
+
+  // Protect all other routes (including page routes)
   const redirectUrl = new URL('/auth/login', req.url);
   redirectUrl.searchParams.set('callbackUrl', encodeURI(req.url));
 

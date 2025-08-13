@@ -1,98 +1,76 @@
-import React from 'react';
-import * as Yup from 'yup';
-import { mutate } from 'swr';
-import { useFormik } from 'formik';
-import toast from 'react-hot-toast';
-import { Button, Input } from 'react-daisyui';
+import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-
-import type { ApiResponse } from 'types';
-import { defaultHeaders, maxLengthPolicies } from '@/lib/common';
-import { availableRoles } from '@/lib/permissions';
-import type { Team } from '@prisma/client';
+import { useSWR } from 'swr';
+import { Button, InputWithLabel } from '@/components/shared';
+import toast from 'react-hot-toast';
+import type { Tenant } from '@prisma/client';
 
 interface InviteViaEmailProps {
-  team: Team;
+  tenant: Tenant;
   setVisible: (visible: boolean) => void;
 }
 
-const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
+const InviteViaEmail = ({ setVisible, tenant }: InviteViaEmailProps) => {
   const { t } = useTranslation('common');
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const FormValidationSchema = Yup.object().shape({
-    email: Yup.string()
-      .email()
-      .max(maxLengthPolicies.email)
-      .required(t('require-email')),
-    role: Yup.string()
-      .required(t('required-role'))
-      .oneOf(availableRoles.map((r) => r.id)),
-  });
+  const { mutate } = useSWR(`/api/tenants/${tenant.slug}/invitations?sentViaEmail=true`);
 
-  const formik = useFormik({
-    initialValues: {
-      email: '',
-      role: availableRoles[0].id,
-      sentViaEmail: true,
-    },
-    validationSchema: FormValidationSchema,
-    onSubmit: async (values) => {
-      const response = await fetch(`/api/teams/${team.slug}/invitations`, {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(`/api/tenants/${tenant.slug}/invitations`, {
         method: 'POST',
-        headers: defaultHeaders,
-        body: JSON.stringify(values),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          sentViaEmail: true,
+        }),
       });
 
       if (!response.ok) {
-        const result = (await response.json()) as ApiResponse;
-        toast.error(result.error.message);
-        return;
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to send invitation');
       }
 
       toast.success(t('invitation-sent'));
-      mutate(`/api/teams/${team.slug}/invitations?sentViaEmail=true`);
+      setEmail('');
       setVisible(false);
-      formik.resetForm();
-    },
-  });
+      mutate(`/api/tenants/${tenant.slug}/invitations?sentViaEmail=true`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <form onSubmit={formik.handleSubmit} method="POST" className="pb-6">
-      <h3 className="font-medium text-[14px] pb-2">{t('invite-via-email')}</h3>
-      <div className="flex gap-1">
-        <Input
-          name="email"
-          onChange={formik.handleChange}
-          value={formik.values.email}
-          placeholder="jackson@boxyhq.com"
-          required
-          className="text-sm w-1/2"
+    <div className="p-4">
+      <h3 className="text-lg font-medium mb-4">{t('invite-via-email')}</h3>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <InputWithLabel
+          label={t('email-address')}
           type="email"
-        />
-        <select
-          className="select-bordered select rounded"
-          name="role"
-          onChange={formik.handleChange}
-          value={formik.values.role}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={t('enter-email-address')}
           required
-        >
-          {availableRoles.map((role) => (
-            <option value={role.id} key={role.id}>
-              {role.name}
-            </option>
-          ))}
-        </select>
-        <Button
-          type="submit"
-          color="primary"
-          loading={formik.isSubmitting}
-          disabled={!formik.isValid || !formik.dirty}
-          className="flex-grow"
-        >
-          {t('send-invite')}
-        </Button>
-      </div>
-    </form>
+        />
+        <div className="flex space-x-2">
+          <Button type="submit" loading={isSubmitting} disabled={isSubmitting}>
+            {t('send-invitation')}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setVisible(false)}>
+            {t('cancel')}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 

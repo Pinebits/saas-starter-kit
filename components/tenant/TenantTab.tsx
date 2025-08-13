@@ -23,7 +23,7 @@ interface TenantTabProps {
 const TenantTab = ({ activeTab, tenant, heading, tenantFeatures }: TenantTabProps) => {
   const { t } = useTranslation('common');
   const canAccess = useCanAccess();
-  const router = useRouter();
+
 
   // Basic tabs that are always available
   const tabs = [

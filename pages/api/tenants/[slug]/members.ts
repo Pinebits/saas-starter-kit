@@ -7,7 +7,6 @@ import {
   getTenant
 } from 'models/tenant';
 import { getCurrentUser, getUser } from 'models/user';
-import { withMiddleware } from '@/lib/middleware';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
@@ -17,7 +16,7 @@ const updateMemberSchema = z.object({
   role: z.enum(['OWNER', 'ADMIN', 'MEMBER']),
 });
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { slug } = req.query;
   const user = await getCurrentUser(req, res);
 
@@ -97,5 +96,3 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       throw new ApiError(405, `Method ${req.method} Not Allowed`);
   }
 }
-
-export default withMiddleware(handler);
